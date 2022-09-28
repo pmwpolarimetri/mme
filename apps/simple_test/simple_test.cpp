@@ -1,29 +1,38 @@
 #include <iostream>
 #include "asio.hpp"
 #include <span>
+#include <memory>
 #include "mme/imaging/image.h"
 #include "mme/motion/espdriver.h"
-#include <functional>
 
+#include "lucamapi.h"
+#include "XCamera.h"
 
 int main() {
 
 	std::cout << "simple test" << std::endl;
 
-	auto im = mme::Image{ 1.0, {8, 8} };
+	auto num_cameras = LucamNumCameras();
+	std::cout << std::format("num cameras: {}\n", num_cameras);
+	auto handle = LucamCameraOpen(1);
+	if (handle) {
+		std::cout << "Opened" << std::endl;
+		LucamCameraClose(handle);
+	}
 
-	mme::ESPDriver driver{ "COM1" };
+	auto cam = std::unique_ptr<XCamera>(XCamera::Create());
+	if (cam) {
+		std::cout << "Made xeneth cam" << std::endl;
+	}
 
-	driver.move_relative(0, 10.0);
-	driver.move_absolute({ 0,1 }, { 10, 20 });
-
-	std::function<void(double)> axis1_func = std::bind_front(&mme::ESPDriver::move_relative, &driver, 1);
-
-	std::function<void(double)> axis2_func = [&driver](double pos) {
-		return driver.move_relative(2, pos);
-	};
-
+	//try {
+	//	mme::ESPDriver driver{ "COM1" };
+	//	auto reply = driver.request("VE?\r\n");
+	//}
+	//catch( const asio::system_error& e) {
+	//	std::cout << e.what() << std::endl;
+	//	return 0;
+	//}
 	
-
 	return 0;
 }
