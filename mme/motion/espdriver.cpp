@@ -1,5 +1,6 @@
 #include "mme/motion/espdriver.h"
 #include <iostream>
+#include <istream>
 #include <format>
 
 mme::ESPDriver::ESPDriver(std::string_view com_port) : m_com_port(com_port), m_io_context(), m_serial_port(m_io_context, m_com_port)
@@ -23,21 +24,23 @@ std::string mme::ESPDriver::request(std::string req)
 {
 	//precondition: request only generates 1 reply (1 line)
 	auto bytes_written = asio::write(m_serial_port, asio::buffer(std::move(req)));
-	//auto bytes_written = m_serial_port.write_some(asio::buffer(std::move(req)));
 	std::cout << std::format("wrote: {} bytes\n", bytes_written);
+
 	constexpr auto delimiter = "\r\n";
-	std::string reply;
-	//auto bytes_read = m_serial_port.read_some(asio::dynamic_buffer(reply));
-	auto bytes_read = asio::read(m_serial_port, asio::dynamic_buffer(reply, 1));
-	//auto bytes_read = asio::read_until(m_serial_port, asio::dynamic_buffer(reply), delimiter);
+	asio::streambuf sb;
+	auto bytes_read = asio::read_until(m_serial_port, sb, "\r\n");
+
 	std::cout << std::format("bytes read: {}\n", bytes_read);
+	std::cout << std::format("streambuf size: {}\n", sb.size());
+
+	std::istream is(&sb);
+	std::string reply;
+	std::getline(is, reply);
+
+	assert(sb.size() == 0);
+
 	return reply;
 
-	//std::string line = reply.substr(0, bytes_read);
-	//reply.erase(0, bytes_read);
-	////TODO: assert that only one line is received
-	//line.erase(std::remove(line.begin(), line.end(), '\r\n'), line.cend()); //remove newline chars
-	//return line;
 }
 
 void mme::ESPDriver::move_relative(size_t axis, double pos)
