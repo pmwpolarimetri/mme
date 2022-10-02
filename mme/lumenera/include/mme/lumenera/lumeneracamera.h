@@ -25,11 +25,9 @@ namespace mme {
 		LumeneraCamera(LumeneraCamera&& other) = default;
 		LumeneraCamera& operator=(LumeneraCamera&& other) = default;
 
-		void capture_single();
+		Image<float> capture_single();
 		ImageSize image_size() const;
 
-		//void set_exposure(double ms);
-		//void set_binning();
 	private:
 		static void close_handle(void* handle);
 		using handle_cleaner_func_t = void(*)(void*);

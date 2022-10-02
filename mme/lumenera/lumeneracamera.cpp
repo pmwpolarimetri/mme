@@ -17,7 +17,7 @@ LUCAM_SNAPSHOT default_camera_settings() {
     camera_settings.format.xOffset = 0;//980;//0;//frameFormat.xOffset;
     camera_settings.format.yOffset = 0;//2;//312;//frameFormat.xOffset;
     camera_settings.bufferlastframe = FALSE;
-    camera_settings.exposure = 50.0; // 50ms exposure
+    camera_settings.exposure = 50; // 50ms exposure
     camera_settings.exposureDelay = 0.0;
     camera_settings.flReserved1 = 0.0;
     camera_settings.flReserved2 = 0.0;
@@ -56,19 +56,25 @@ mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
 }
 
 
-void mme::LumeneraCamera::capture_single()
+mme::Image<float> mme::LumeneraCamera::capture_single()
 {
-    std::vector<uint16_t> bytes;
     auto size = image_size();
-    bytes.reserve(size.height * size.width);
+    std::vector<uint16_t> bytes(size.height * size.width, 0);
     bool ok = LucamTakeFastFrame(m_camera_handle.get(), reinterpret_cast<uint8_t*>(bytes.data()));
-    if (ok) {
-        std::cout << "Got frame" << std::endl;
+    if (!ok) {
+        throw std::runtime_error("Could not capture frame with Lumenera camera");
     }
+    Image<float> image(0.0, size); //TODO: fix bug on image constructor with uninitialized memory
+    for (size_t i = 0; auto& pixel : image.pixels()) {
+        pixel = static_cast<float>(bytes[i] >> 4);
+        i++;
+    }
+    return image;
 }
 
 mme::ImageSize mme::LumeneraCamera::image_size() const
 {
+    //TODO: fix this
     return ImageSize{ 2048, 2048 };
 }
 
