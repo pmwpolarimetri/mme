@@ -3,19 +3,20 @@
 
 int main() {
 
-	//try
-	//{
-	//	mme::LumeneraCamera cam{};
-	//}
-	//catch (const std::runtime_error& e)
-	//{
-	//	std::cout << e.what() << std::endl;
-	//}
-
+	try
 	{
 		mme::LumeneraCamera cam{};
-		
+		auto cam2 = std::move(cam);
 	}
+	catch (const std::runtime_error& e)
+	{
+		std::cout << e.what() << std::endl;
+	}
+
+	//{
+	//	mme::LumeneraCamera cam{};
+	//	
+	//}
 	
 
 	

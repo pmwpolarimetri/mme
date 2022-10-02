@@ -17,12 +17,13 @@ namespace mme {
 	class LumeneraCamera {
 	public:
 		LumeneraCamera(size_t camera_num = 1);
-		//~LumeneraCamera();
+		
 		LumeneraCamera(const LumeneraCamera& other) = delete;
 		LumeneraCamera& operator=(const LumeneraCamera& other) = delete;
-		//
-		//LumeneraCamera(LumeneraCamera&& other);
-		//LumeneraCamera& operator=(LumeneraCamera&& other);
+		
+		~LumeneraCamera() = default;
+		LumeneraCamera(LumeneraCamera&& other) = default;
+		LumeneraCamera& operator=(LumeneraCamera&& other) = default;
 
 
 		
@@ -37,7 +38,5 @@ namespace mme {
 		std::unique_ptr<void, handle_cleaner_func_t> m_camera_handle;
 		//void* m_camera_handle;
 	};
-
-	void test_deleter(void* handle);
 
 }
