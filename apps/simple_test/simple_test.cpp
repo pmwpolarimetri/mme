@@ -5,8 +5,9 @@
 #include "mme/imaging/image.h"
 #include "mme/motion/espdriver.h"
 
+#include <Windows.h>
 #include "lucamapi.h"
-#include "XCamera.h"
+//#include "XCamera.h"
 
 int main() {
 
@@ -20,10 +21,10 @@ int main() {
 		LucamCameraClose(handle);
 	}
 
-	auto cam = std::unique_ptr<XCamera>(XCamera::Create());
-	if (cam) {
-		std::cout << "Made xeneth cam" << std::endl;
-	}
+	//auto cam = std::unique_ptr<XCamera>(XCamera::Create());
+	//if (cam) {
+	//	std::cout << "Made xeneth cam" << std::endl;
+	//}
 
 	//try {
 	//	mme::ESPDriver driver{ "COM1" };
