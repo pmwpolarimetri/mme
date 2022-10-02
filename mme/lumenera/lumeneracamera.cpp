@@ -5,8 +5,16 @@
 #include <iostream>
 
 mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
-	:m_camera_handle(std::unique_ptr<void, handle_cleaner_func_t>(LucamCameraOpen(camera_num), test_deleter))
+	//:m_camera_handle(std::unique_ptr<void, handle_cleaner_func_t>(LucamCameraOpen(camera_num), test_deleter))
+	: m_camera_handle(nullptr, close_handle)
 {
+	auto handle = LucamCameraOpen(camera_num);
+	if (handle == NULL) {
+		throw std::runtime_error(std::format("Lumenera camera with number {} could not be opened, check if it is connected", camera_num));
+	}
+	else {
+		m_camera_handle = std::unique_ptr<void, handle_cleaner_func_t>(handle, LumeneraCamera::close_handle);
+	}
 	//if (!m_camera_handle) {
 	//	throw std::runtime_error(std::format("Lumenera camera with number {} could not be opened, check if it is connected", camera_num));
 	//}
@@ -22,11 +30,14 @@ mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
 //}
 void mme::LumeneraCamera::close_handle(void* handle)
 {
-	if (handle == 0) {
-		auto close_ok = LucamCameraClose(handle);
+	//TODO: change to logging instead of stdout
+	std::cout << "Starting to close Lumenera camera handle" << std::endl;
+	auto close_ok = LucamCameraClose(handle);
+	if (close_ok) {
 		std::cout << "Closed Lumenera camera handle" << std::endl;
-		//TODO: log if did not close correctly
-		//handle = nullptr;
+	}
+	else {
+		std::cout << "Could not close Lumenera camera handle" << std::endl;
 	}
 }
 //
@@ -39,13 +50,4 @@ void mme::LumeneraCamera::close_handle(void* handle)
 //	// TODO: insert return statement here
 //}
 
-void mme::test_deleter(void* handle)
-{
-	std::cout << "test_deleter" << std::endl;
-	if (handle == 0) {
-		auto close_ok = LucamCameraClose(handle);
-		std::cout << "Closed Lumenera camera handle" << std::endl;
-		//TODO: log if did not close correctly
-		//handle = nullptr;
-	}
-}
+
