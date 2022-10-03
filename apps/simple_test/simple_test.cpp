@@ -12,29 +12,14 @@
 
 int main() {
 
-	std::cout << "simple test" << std::endl;
-
-	auto num_cameras = LucamNumCameras();
-	std::cout << std::format("num cameras: {}\n", num_cameras);
-	auto handle = LucamCameraOpen(1);
-	if (handle) {
-		std::cout << "Opened" << std::endl;
-		LucamCameraClose(handle);
+	try {
+		mme::ESPDriver driver{ "COM1" };
+		auto reply = driver.request("VE?\r\n");
 	}
-
-	//auto cam = std::unique_ptr<XCamera>(XCamera::Create());
-	//if (cam) {
-	//	std::cout << "Made xeneth cam" << std::endl;
-	//}
-
-	//try {
-	//	mme::ESPDriver driver{ "COM1" };
-	//	auto reply = driver.request("VE?\r\n");
-	//}
-	//catch( const asio::system_error& e) {
-	//	std::cout << e.what() << std::endl;
-	//	return 0;
-	//}
+	catch( const asio::system_error& e) {
+		std::cout << e.what() << std::endl;
+		return 0;
+	}
 	
 	return 0;
 }

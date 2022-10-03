@@ -1,6 +1,6 @@
 add_executable(lumenera_test lumenera_test.cpp)
 
-target_link_libraries(lumenera_test PRIVATE mme::lumenera)
+target_link_libraries(lumenera_test PRIVATE mme::lumenera libnpy mme::imaging)
 
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
