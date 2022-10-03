@@ -38,13 +38,18 @@ namespace mme {
 		void home(size_t axis);
 
 		//void move_relative(std::vector<size_t> axes, std::vector<double> positions);
-		void move_absolute(std::vector<size_t> axes, std::vector<double> positions);
-		void home(std::vector<size_t> axes, std::vector<double> positions);
+		//void move_absolute(std::vector<size_t> axes, std::vector<double> positions);
+		//void home(std::vector<size_t> axes, std::vector<double> positions);
 
 	private:
+		std::string read_line();
 		void wait_for_motion_done(size_t axis);
-		void wait_for_motion_done(std::vector<size_t> axes);
+		//void wait_for_motion_done(std::vector<size_t> axes);
 		static std::string motion_done_req(size_t axis);
+		static std::string move_relative_cmd(size_t axis, double pos);
+		static std::string move_absolute_cmd(size_t axis, double pos);
+		static std::string home_cmd(size_t axis);
+
 
 	private:
 		std::string m_com_port;
@@ -52,6 +57,8 @@ namespace mme {
 		//asio::io_service m_io_service;
 		asio::serial_port m_serial_port;
 		std::string m_serial_num;
+		asio::streambuf m_buffer;
+
 	};
 
 

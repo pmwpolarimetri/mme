@@ -1,8 +1,9 @@
 
 set(imaging_header_dir "${CMAKE_CURRENT_SOURCE_DIR}/include/mme/imaging")
 
-add_library(imaging INTERFACE "${imaging_header_dir}/image.h"  )
+add_library(imaging INTERFACE "${imaging_header_dir}/image.h" )
 add_library(mme::imaging ALIAS imaging)
+target_link_libraries(imaging INTERFACE libnpy)
 target_include_directories(imaging INTERFACE include)
 target_compile_features(imaging INTERFACE cxx_std_20)
 

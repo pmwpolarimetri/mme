@@ -2,7 +2,9 @@
 #include <vector>
 #include <span>
 #include <format>
-
+#include <assert.h>
+#include <string_view>
+#include "npy.hpp"
 
 namespace mme {
 
@@ -110,7 +112,7 @@ namespace mme {
 		Image(ImageSize size)
 		{
 			m_pixels.reserve(num_pixels(size)); //logical length of owning vector is 0
-			m_view = ImageView<Pixel>{ std::span<Pixel>{m_pixels.begin(), num_pixels(size)}, size };
+			m_view = ImageView<Pixel>{ std::span<Pixel>{m_pixels.data(), num_pixels(size)}, size};
 		}
 
 		ImageSize size() const { return m_view.size(); }
@@ -130,4 +132,16 @@ namespace mme {
 	};
 
 
+	template<typename T>
+	void save_to_numpy(const std::string& filename, ImageView<T> image_view) {
+		const unsigned long num_rows = image_view.size().height;
+		const unsigned long num_cols = image_view.size().width;
+		const unsigned long shape[] = { num_rows, num_cols };
+		npy::SaveArrayAsNumpy(filename, false, 2, shape, image_view.pixels().data());		
+	}
+
+	template<typename T>
+	void save_to_numpy(const std::string& filename, const Image<T>& image) {
+		save_to_numpy(filename, image.as_view());
+	}
 }
