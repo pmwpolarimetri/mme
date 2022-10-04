@@ -61,6 +61,7 @@ bool mme::FW_filter_wheel::change_filter_position(size_t position)
 	if (err_code < 0) {
 		return false;
 	}
+	m_current_position = position;
 	return true;
 }
 
