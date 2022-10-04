@@ -1,0 +1,5 @@
+add_library(fwxc fwxc.cpp include/mme/fwxc/fwxc.h)
+add_library(mme::fwxc ALIAS fwxc)
+target_link_libraries(fwxc PRIVATE thorlabs_fwxc_sdk)
+target_include_directories(fwxc PUBLIC include)
+target_compile_features(fwxc PUBLIC cxx_std_20)
