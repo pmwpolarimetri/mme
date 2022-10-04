@@ -54,9 +54,7 @@ namespace mme {
 	private:
 		std::string m_com_port;
 		asio::io_context m_io_context;
-		//asio::io_service m_io_service;
 		asio::serial_port m_serial_port;
-		std::string m_serial_num;
 		asio::streambuf m_buffer;
 
 	};
