@@ -87,6 +87,7 @@ bool mme::Fwxc::change_filter_position(size_t position)
 
 std::optional<int> mme::Fwxc::connect_to_filter_wheel(std::string_view serial_num)
 {
+	//TODO: add c string termination
 	std::vector<char> sn{ serial_num.begin(), serial_num.end() };
 	char serial[] = "FWV5KU2V";
 	//int handle = Open(sn.data(), 115200, 5000);
