@@ -23,11 +23,9 @@ std::string mme::ESPDriver::request(std::string req)
 	//precondition: request only generates 1 reply (1 line)
 	auto bytes_to_write = req.size();
 	auto bytes_written = asio::write(m_serial_port, asio::buffer(std::move(req)));
-	std::cout << std::format("wrote: {} bytes\n", bytes_written);
 	assert(bytes_written == bytes_written);
 
 	return read_line();
-
 }
 
 void mme::ESPDriver::move_relative(size_t axis, double pos)
@@ -67,17 +65,11 @@ std::string mme::ESPDriver::read_line()
 {
 	constexpr auto delimiter = "\r\n";
 	auto bytes_read = asio::read_until(m_serial_port, m_buffer, delimiter);
-
-	std::cout << std::format("bytes read: {}\n", bytes_read);
-	std::cout << std::format("streambuf size: {}\n", m_buffer.size());
-
 	std::istream is(&m_buffer);
 	std::string reply;
 	std::getline(is, reply);
 
 	assert(m_buffer.size() == 0);
-	assert(reply.ends_with("\r\n"));
-	reply.erase(reply.size()-2, 2);
 
 	return reply;
 }
@@ -89,8 +81,8 @@ void mme::ESPDriver::wait_for_motion_done(size_t axis)
 	{
 		auto reply = request(motion_done_req(axis));
 		//parse
-		int reply_as_int = std::stoi(reply);
-		if (reply_as_int == 1) {
+		int motion_status = std::stoi(reply);
+		if (motion_status == 1) {
 			break;
 		}
 	}
