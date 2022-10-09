@@ -1,3 +1,4 @@
 add_subdirectory(simple_test)
 add_subdirectory(lumenera_test)
 add_subdirectory(esp_test)
+add_subdirectory(filterwheel_test)

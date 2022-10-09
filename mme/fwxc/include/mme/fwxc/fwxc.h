@@ -6,18 +6,18 @@
 
 namespace mme {
 
-	class FW_filter_wheel {
+	class Fwxc {
 
 	public:
-		FW_filter_wheel();
-		FW_filter_wheel(std::string_view serial_num);
-		~FW_filter_wheel();
+		Fwxc();
+		Fwxc(std::string_view serial_num);
+		~Fwxc();
 
-		FW_filter_wheel(const FW_filter_wheel& other) = delete;
-		FW_filter_wheel& operator=(const FW_filter_wheel& other) = delete;
+		Fwxc(const Fwxc& other) = delete;
+		Fwxc& operator=(const Fwxc& other) = delete;
 
-		FW_filter_wheel(FW_filter_wheel&& other) = default;
-		FW_filter_wheel& operator=(FW_filter_wheel&& other) = default;
+		Fwxc(Fwxc&& other) noexcept;
+		Fwxc& operator=(Fwxc&& other) noexcept;
 
 		size_t num_filters() const;
 		size_t current_filter_position() const;
