@@ -4,6 +4,7 @@
 #include <format>
 #include <iostream>
 #include <vector>
+#include <stdexcept>
 
 LUCAM_SNAPSHOT default_camera_settings() {
     LUCAM_SNAPSHOT camera_settings;
@@ -35,6 +36,12 @@ LUCAM_SNAPSHOT default_camera_settings() {
     camera_settings.useStrobe = TRUE;
 
     return camera_settings;
+}
+
+bool change_camera_settings(void* camera_handle, LUCAM_SNAPSHOT settings) {
+    const bool isDisabled = LucamDisableFastFrames(camera_handle);
+    const bool isEnabled = LucamEnableFastFrames(camera_handle, &settings);
+    return isDisabled && isEnabled;
 }
 
 mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
@@ -74,8 +81,46 @@ mme::Image<float> mme::LumeneraCamera::capture_single()
 
 mme::ImageSize mme::LumeneraCamera::image_size() const
 {
-    //TODO: fix this
-    return ImageSize{ 2048, 2048 };
+    return m_properties.image_size;
+}
+
+void mme::LumeneraCamera::set_exposure(Exposure exposure)
+{
+    auto settings = default_camera_settings();
+    settings.exposure = static_cast<float>(exposure.value);
+
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    if (!ok) {
+        throw std::runtime_error("Failed to change exposure for Lumenera camera");
+    }
+    m_properties.exposure = exposure;
+}
+
+void mme::LumeneraCamera::set_image_size(ImageSize size)
+{
+    auto settings = default_camera_settings();
+    settings.format.height = static_cast<unsigned long>(size.height);
+    settings.format.width = static_cast<unsigned long>(size.width);
+    
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    if (!ok) {
+        throw std::runtime_error("Failed to change image size for Lumenera camera");
+    }
+    m_properties.image_size = size;
+}
+
+void mme::LumeneraCamera::set_binning(Binning bin)
+{
+    auto settings = default_camera_settings();
+    settings.format.binningX = static_cast<unsigned short>(bin.value);
+    settings.format.binningY = static_cast<unsigned short>(bin.value);
+
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    if (!ok) {
+        throw std::runtime_error("Failed to change image size for Lumenera camera");
+    }
+    m_properties.image_size = ImageSize{ m_properties.image_size.height / bin.value, m_properties.image_size.width / bin.value };
+    m_properties.binning = bin;
 }
 
 void mme::LumeneraCamera::close_handle(void* handle)
@@ -97,5 +142,16 @@ bool mme::LumeneraCamera::write_default_camera_settings()
     auto settings = default_camera_settings();
     const bool isEnabled = LucamEnableFastFrames(m_camera_handle.get(), &settings);
 
-    return (isDisabled && isEnabled);
+    if (!isDisabled || !isEnabled) {
+        return false;
+    }
+
+    m_properties.binning = Binning{ settings.format.binningX };
+    m_properties.exposure = Exposure{ settings.exposure };
+    m_properties.image_size = ImageSize{settings.format.height/settings.format.binningY, settings.format.width / settings.format.binningX };
+}
+
+bool mme::LumeneraCamera::change_properties(Properties properties)
+{
+    return false;
 }
