@@ -8,10 +8,16 @@ int main()
 {
 	try{
 		mme::LumeneraCamera cam{};
+		cam.set_exposure(mme::Exposure{5});
+		cam.set_image_size(mme::ImageSize{ .height=2048, .width=2048});
+		cam.set_binning(mme::Binning{ 4 });
+		
 		auto image = cam.capture_single();
 		for (size_t i = 0; i < 10; i++)
 		{
 			image = cam.capture_single();
+			std::cout << "Captured" << std::endl;
+			std::cout << "Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
 		}
 		
 		//mme::Image<float> image{ 0.0, mme::ImageSize{256, 256} };

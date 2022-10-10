@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <stdexcept>
+#include <chrono>
 
 LUCAM_SNAPSHOT default_camera_settings() {
     LUCAM_SNAPSHOT camera_settings;
@@ -44,8 +45,19 @@ bool change_camera_settings(void* camera_handle, LUCAM_SNAPSHOT settings) {
     return isDisabled && isEnabled;
 }
 
+LUCAM_SNAPSHOT make_lucam_settings(mme::LumeneraCamera::Properties properties) {
+    auto settings = default_camera_settings();
+    settings.exposure = static_cast<float>(properties.exposure.value);
+    settings.format.binningX = static_cast<unsigned short>(properties.binning.value);
+    settings.format.binningY = static_cast<unsigned short>(properties.binning.value);
+
+    settings.format.height = static_cast<unsigned long>(properties.image_size.height);
+    settings.format.width = static_cast<unsigned long>(properties.image_size.width);
+
+    return settings;
+}
+
 mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
-	//:m_camera_handle(std::unique_ptr<void, handle_cleaner_func_t>(LucamCameraOpen(camera_num), test_deleter))
 	: m_camera_handle(nullptr, close_handle)
 {
 	auto handle = LucamCameraOpen(camera_num);
@@ -59,68 +71,75 @@ mme::LumeneraCamera::LumeneraCamera(size_t camera_num)
     if (!write_default_camera_settings()) {
         throw std::runtime_error("Could not write default camera settings");
     }
-
 }
 
 
 mme::Image<float> mme::LumeneraCamera::capture_single()
 {
+    //TODO: remove unnecessary memory initializations (byte array + image array) 
     auto size = image_size();
-    std::vector<uint16_t> bytes(size.height * size.width, 0);
+    std::vector<uint16_t> bytes(size.height * size.width, 0); //here
+    //auto start = std::chrono::steady_clock::now();
     bool ok = LucamTakeFastFrame(m_camera_handle.get(), reinterpret_cast<uint8_t*>(bytes.data()));
+    //auto stop = std::chrono::steady_clock::now();
+    //std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
+
     if (!ok) {
         throw std::runtime_error("Could not capture frame with Lumenera camera");
     }
-    Image<float> image(0.0, size); //TODO: fix bug on image constructor with uninitialized memory
+    //start = std::chrono::steady_clock::now();
+    Image<float> image(0.0, size);  //here
     for (size_t i = 0; auto& pixel : image.pixels()) {
         pixel = static_cast<float>(bytes[i] >> 4);
         i++;
     }
+    //stop = std::chrono::steady_clock::now();
+    //std::cout << "copy and bitshift: " << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << std::endl;
     return image;
 }
 
 mme::ImageSize mme::LumeneraCamera::image_size() const
 {
-    return m_properties.image_size;
+    return { m_properties.image_size.height / m_properties.binning.value, m_properties.image_size.width / m_properties.binning.value };
 }
 
 void mme::LumeneraCamera::set_exposure(Exposure exposure)
 {
-    auto settings = default_camera_settings();
-    settings.exposure = static_cast<float>(exposure.value);
+    auto new_properties = m_properties;
+    new_properties.exposure = exposure;
+    auto lumenera_settings = make_lucam_settings(new_properties);
 
-    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(lumenera_settings));
     if (!ok) {
         throw std::runtime_error("Failed to change exposure for Lumenera camera");
     }
-    m_properties.exposure = exposure;
+    m_properties = new_properties;
 }
 
 void mme::LumeneraCamera::set_image_size(ImageSize size)
 {
-    auto settings = default_camera_settings();
-    settings.format.height = static_cast<unsigned long>(size.height);
-    settings.format.width = static_cast<unsigned long>(size.width);
-    
-    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    auto new_properties = m_properties;
+    new_properties.image_size = size;
+    auto lumenera_settings = make_lucam_settings(new_properties);
+
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(lumenera_settings));
     if (!ok) {
-        throw std::runtime_error("Failed to change image size for Lumenera camera");
+        throw std::runtime_error("Failed to change exposure for Lumenera camera");
     }
-    m_properties.image_size = size;
+    m_properties = new_properties;
 }
 
 void mme::LumeneraCamera::set_binning(Binning bin)
 {
-    auto settings = default_camera_settings();
-    settings.format.binningX = static_cast<unsigned short>(bin.value);
-    settings.format.binningY = static_cast<unsigned short>(bin.value);
+    auto new_properties = m_properties;
+    new_properties.binning = bin;
+    auto lumenera_settings = make_lucam_settings(new_properties);
 
-    auto ok = change_camera_settings(m_camera_handle.get(), std::move(settings));
+    auto ok = change_camera_settings(m_camera_handle.get(), std::move(lumenera_settings));
     if (!ok) {
-        throw std::runtime_error("Failed to change image size for Lumenera camera");
+        throw std::runtime_error("Failed to change exposure for Lumenera camera");
     }
-    m_properties.image_size = ImageSize{ m_properties.image_size.height / bin.value, m_properties.image_size.width / bin.value };
-    m_properties.binning = bin;
+    m_properties = new_properties;
 }
 
 void mme::LumeneraCamera::close_handle(void* handle)
@@ -149,9 +168,5 @@ bool mme::LumeneraCamera::write_default_camera_settings()
     m_properties.binning = Binning{ settings.format.binningX };
     m_properties.exposure = Exposure{ settings.exposure };
     m_properties.image_size = ImageSize{settings.format.height/settings.format.binningY, settings.format.width / settings.format.binningX };
-}
-
-bool mme::LumeneraCamera::change_properties(Properties properties)
-{
-    return false;
+    return true;
 }

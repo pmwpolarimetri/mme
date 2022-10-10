@@ -5,15 +5,17 @@
 #include <variant>
 
 
-struct Exposure {
-	double value;
-};
 
-struct Binning {
-	size_t value;
-};
 
 namespace mme {
+
+	struct Exposure {
+		double value;
+	};
+
+	struct Binning {
+		size_t value;
+	};
 
 	class LumeneraCamera {
 	public:
@@ -37,8 +39,6 @@ namespace mme {
 
 		//void set_properties(const std::vector<Property>& properties);
 
-
-	private:
 		struct Properties {
 			Exposure exposure;
 			ImageSize image_size;
@@ -49,7 +49,6 @@ namespace mme {
 		using handle_cleaner_func_t = void(*)(void*);
 
 		bool write_default_camera_settings();
-		bool change_properties(Properties properties);
 
 
 	private:
