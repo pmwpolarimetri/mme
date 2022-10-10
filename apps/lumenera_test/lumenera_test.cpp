@@ -9,8 +9,13 @@ int main()
 	try{
 		mme::LumeneraCamera cam{};
 		auto image = cam.capture_single();
+		for (size_t i = 0; i < 10; i++)
+		{
+			image = cam.capture_single();
+		}
+		
 		//mme::Image<float> image{ 0.0, mme::ImageSize{256, 256} };
-		auto filename = std::filesystem::path("C:/Users/permw/phd/dev/mme/data/image.npy");
+		auto filename = std::filesystem::path("C:/Users/PolarimetriD4-112/dev/mme/data/image.npy");
 		mme::save_to_numpy(filename.string(), image);
 		return 1;
 	}
