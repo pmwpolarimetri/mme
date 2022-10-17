@@ -19,7 +19,7 @@
 #include "asio.hpp"
 
 // Type in a foldername of the measurement:
-std::string folderdescription = "Frosted glass";
+std::string folderdescription = "Air";
 
 // K-space or real image?
 bool kspace = true;
@@ -27,10 +27,10 @@ bool kspace = true;
 // Transmission or reflection mode?
 bool transmission = true;
 
-//Type in the rotations of the retarders
-std::vector<double> PSG_pos{-51.7, -15.1, 15.1, 51.7};
-std::vector<double> PSA_pos{-51.7,-15.1,15.1,51.7};  
-
+//Type in the rotation increments (in degrees) of the retarders, and number of measurements
+float PSG_rotstep = 7.5;
+float PSA_rotstep = 37.5;
+int Nmeas = 30;
 
 std::string make_new_directory(std::string transorref, std::string kspaceorreal) {
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -67,9 +67,9 @@ void driver_initialize(mme::ESPDriver* driver, int PSG_driver, int PSA_driver) {
 	driver->home(PSA_driver);
 }
 
-void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength) {
+void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength, int image_number) {
 	auto image = cam->capture_single();
-	std::cout << "Captured image at wavelength " << wavelength << ". Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
+	std::cout << "Captured image number " << image_number <<  " at wavelength " << wavelength << ". Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
 
 	auto filename = std::filesystem::path(path + "/PSG" + PSG_pos + "PSA" + PSA_pos + "Wl" + wavelength + ".npy");
 	mme::save_to_numpy(filename.string(), image);
@@ -109,31 +109,23 @@ int main()
 		mme::ESPDriver driver{ "COM1" };
 		driver_initialize(&driver,PSG_driver,PSA_driver);
 
-		for (int i = 0; i != PSG_pos.size(); ++i) {
 
-			driver.move_absolute(PSG_driver, PSG_pos[i]);
+		for (int i = 0; i != Nmeas; ++i) {
 
-			for (int j = 0; j != PSA_pos.size(); ++j) {
-				float PSA_pos_j;
-				if (i % 2 != 0) {
-					PSA_pos_j = PSA_pos[PSA_pos.size()-1 - j];
-				}
-				else {
-					PSA_pos_j = PSA_pos[j];
-				}
-				driver.move_absolute(PSA_driver, PSA_pos_j);
-				std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
+			driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_rotstep * i, PSA_rotstep * i);
 
-				// Include mono and filterwheel for each position
-				std::string wavelength = "white spectrum";
-				measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength);
-			}
+			std::cout << "Moved to positions PSG: " << PSG_rotstep*i << " PSA: " << PSA_rotstep*i << std::endl;
+
+			// Include mono and filterwheel for each position
+			std::string wavelength = "white spectrum";
+			measure_and_save(&cam, path, std::to_string(PSG_rotstep * i).substr(0, std::to_string(PSG_rotstep * i).size() - 5), std::to_string(PSA_rotstep * i).substr(0, std::to_string(PSA_rotstep * i).size() - 5), wavelength, i+1);
+
 		}
 
 		driver.home(PSG_driver);
 		driver.home(PSA_driver);
 
-		std::cout << "\nSuccessfully acquired images and saved to file" << std::endl;
+		std::cout << "\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
 
 		return 1;
 	}

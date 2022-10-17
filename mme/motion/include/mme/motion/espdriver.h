@@ -35,6 +35,7 @@ namespace mme {
 
 		void move_relative(size_t axis, double pos);
 		void move_absolute(size_t axis, double pos);
+		void move_twoaxes_absolute(size_t axis1, size_t axis2, double pos1, double pos2);
 		void home(size_t axis);
 
 		//void move_relative(std::vector<size_t> axes, std::vector<double> positions);
@@ -44,7 +45,7 @@ namespace mme {
 	private:
 		std::string read_line();
 		void wait_for_motion_done(size_t axis);
-		//void wait_for_motion_done(std::vector<size_t> axes);
+		void wait_for_motion_done(std::vector<size_t> axes);
 		static std::string motion_done_req(size_t axis);
 		static std::string move_relative_cmd(size_t axis, double pos);
 		static std::string move_absolute_cmd(size_t axis, double pos);
