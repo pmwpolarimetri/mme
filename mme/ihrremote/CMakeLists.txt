@@ -1,0 +1,5 @@
+add_library(ihrremote "ihrremote.cpp" "include/mme/ihrremote/ihrremote.h" "ihrcoms.cpp" "ihrcoms.h" )
+add_library(mme::ihrremote ALIAS ihrremote)
+target_link_libraries(ihrremote PUBLIC mme::ihr)
+target_include_directories(ihrremote PUBLIC include)
+target_compile_features(ihrremote PUBLIC cxx_std_20)
