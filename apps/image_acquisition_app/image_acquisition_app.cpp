@@ -33,15 +33,18 @@ std::string wavelength = "500";
 
 double exposure = 5; //Max 5 to omit saturation of the detector
 
-//Type in the rotation increments (in degrees) of the retarders, and number of measurements
+
+//Chosse between measuring at the optimal angles (true), or at specific rotation increments (false)
+bool optimalangles = false;
+
+//The optimal angles of the retarders
+std::vector<double> PSG_pos{-51.7076, -15.1964, 15.1964, 51.7076};
+std::vector<double> PSA_pos{-51.7076, -15.1964, 15.1964, 51.7076};
+
+//The rotation increments (in degrees) of the retarders, and number of measurements
 double PSG_rotstep = 1;
 double PSA_rotstep = 5;
 int Nmeas = 361;
-
-////Type in specific rotation angles of the retarders
-//std::vector<double> PSG_pos{-51.7076, -15.1964, 15.1964, 51.7076};
-//std::vector<double> PSA_pos{-51.7076, -15.1964, 15.1964, 51.7076};
-//int Nmeas = 16;
 
 
 //Later, using the filterwheel, add dark measurements:
@@ -127,41 +130,47 @@ int main()
 		driver_initialize(&driver,PSG_driver,PSA_driver);
 
 
-		// For specified rotation increments
-		for (int i = 0; i != Nmeas; ++i) {
+		if (optimalangles) {
+			for (int i = 0; i != PSG_pos.size(); ++i) {
+				for (int j = 0; j != PSA_pos.size(); ++j) {
+					double PSA_pos_j;
+					if (i % 2 != 0) {
+						PSA_pos_j = PSA_pos[PSA_pos.size() - j - 1];
+					}
+					else {
+						PSA_pos_j = PSA_pos[j];
+					}
+					driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_pos[i], PSA_pos_j);
+					std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
 
-			driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_rotstep * i, PSA_rotstep * i);
+					// Include mono and filterwheel for each position
+					measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength, i * PSG_pos.size() + j + 1);
 
-			std::cout << "Moved to positions PSG: " << PSG_rotstep*i << " PSA: " << PSA_rotstep*i << std::endl;
+				}
+			}
+			driver.home(PSG_driver);
+			driver.home(PSA_driver);
 
-			// Include mono and filterwheel for each position
-			measure_and_save(&cam, path, std::to_string(PSG_rotstep * i).substr(0, std::to_string(PSG_rotstep * i).size() - 5), std::to_string(PSA_rotstep * i).substr(0, std::to_string(PSA_rotstep * i).size() - 5), wavelength, i+1);
-
+			std::cout << "\n\nSuccessfully acquired " << PSG_pos.size()*PSA_pos.size() << " images and saved to files in folder " << path << std::endl;
 		}
 
-		// // For specified angles
-		//for (int i = 0; i != PSG_pos.size(); ++i) {
-		//	for (int j = 0; j != PSA_pos.size(); ++j) {
-		//		double PSA_pos_j;
-		//		if (i % 2 != 0) {
-		//			PSA_pos_j = PSA_pos[PSA_pos.size() - j-1];
-		//		}
-		//		else {
-		//			PSA_pos_j = PSA_pos[j];
-		//		}
-		//		driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_pos[i], PSA_pos_j);
-		//		std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
+		else {
+			for (int i = 0; i != Nmeas; ++i) {
 
-		//		// Include mono and filterwheel for each position
-		//		measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength, i*PSG_pos.size() + j + 1);
+				driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_rotstep * i, PSA_rotstep * i);
 
-		//	}
-		//}
+				std::cout << "Moved to positions PSG: " << PSG_rotstep * i << " PSA: " << PSA_rotstep * i << std::endl;
 
-		driver.home(PSG_driver);
-		driver.home(PSA_driver);
+				// Include mono and filterwheel for each position
+				measure_and_save(&cam, path, std::to_string(PSG_rotstep * i).substr(0, std::to_string(PSG_rotstep * i).size() - 5), std::to_string(PSA_rotstep * i).substr(0, std::to_string(PSA_rotstep * i).size() - 5), wavelength, i + 1);
 
-		std::cout << "\n\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
+			}
+
+			driver.home(PSG_driver);
+			driver.home(PSA_driver);
+
+			std::cout << "\n\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
+		}
 
 
 		// Run python plotting-script
