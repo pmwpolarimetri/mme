@@ -40,6 +40,14 @@ void mme::ESPDriver::move_absolute(size_t axis, double pos)
 	wait_for_motion_done(axis);
 }
 
+void mme::ESPDriver::move_twoaxes_absolute(size_t axis1, size_t axis2, double pos1, double pos2)
+{
+	command(move_absolute_cmd(axis1, pos1));
+	command(move_absolute_cmd(axis2, pos2));
+	wait_for_motion_done(axis1);
+	wait_for_motion_done(axis2);
+}
+
 void mme::ESPDriver::home(size_t axis)
 {
 	command(home_cmd(axis));
