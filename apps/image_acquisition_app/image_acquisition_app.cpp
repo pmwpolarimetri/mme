@@ -8,6 +8,8 @@
 #include <chrono>
 #include <ctime>
 #include <assert.h>
+#include <stdio.h>
+#include <Python.h>
 //#include <Windows.h>
 
 #include "mme/lumenera/lumeneracamera.h"
@@ -19,7 +21,7 @@
 #include "asio.hpp"
 
 // Type in a foldername of the measurement:
-std::string folderdescription = "Frosted glass";
+std::string folderdescription = "Calibration angles, 500nm";
 
 // K-space or real image?
 bool kspace = true;
@@ -27,10 +29,28 @@ bool kspace = true;
 // Transmission or reflection mode?
 bool transmission = true;
 
-//Type in the rotations of the retarders
-std::vector<double> PSG_pos{-51.7, -15.1, 15.1, 51.7};
-std::vector<double> PSA_pos{-51.7,-15.1,15.1,51.7};  
+std::string wavelength = "500";
 
+double exposure = 5; //Max 5 to omit saturation of the detector
+
+
+//Chosse between measuring at the optimal angles (true), or at specific rotation increments (false)
+bool optimalangles = false;
+
+//The optimal angles of the retarders
+std::vector<double> PSG_pos{-51.7076, -15.1964, 15.1964, 51.7076};
+std::vector<double> PSA_pos{-51.7076, -15.1964, 15.1964, 51.7076};
+
+//The rotation increments (in degrees) of the retarders, and number of measurements
+double PSG_rotstep = 1;
+double PSA_rotstep = 5;
+int Nmeas = 361;
+
+
+//Later, using the filterwheel, add dark measurements:
+//Do a dark measurement, and give the file a name including "dark measurement"
+//The dark correction will then automatically be performed in the python analysis script.
+//Meanwhile: Do a dark measurement by blocking the beam, and copy the file into the folder containing the other data
 
 std::string make_new_directory(std::string transorref, std::string kspaceorreal) {
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -53,7 +73,7 @@ std::string make_new_directory(std::string transorref, std::string kspaceorreal)
 }
 
 void camera_initialize(mme::LumeneraCamera *cam) {
-	cam->set_exposure(mme::Exposure{ 5 });
+	cam->set_exposure(mme::Exposure{ exposure });
 	cam->set_image_size(mme::ImageSize{ .height = 2048, .width = 2048 });
 	cam->set_binning(mme::Binning{ 4 });
 	std::cout << "Initialized camera" << std::endl;
@@ -67,9 +87,9 @@ void driver_initialize(mme::ESPDriver* driver, int PSG_driver, int PSA_driver) {
 	driver->home(PSA_driver);
 }
 
-void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength) {
+void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength, int image_number) {
 	auto image = cam->capture_single();
-	std::cout << "Captured image at wavelength " << wavelength << ". Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
+	std::cout << "Captured image number " << image_number <<  " at wavelength " << wavelength << ". Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
 
 	auto filename = std::filesystem::path(path + "/PSG" + PSG_pos + "PSA" + PSA_pos + "Wl" + wavelength + ".npy");
 	mme::save_to_numpy(filename.string(), image);
@@ -85,20 +105,20 @@ int main()
 		std::string transorref;
 		if (transmission) {
 			PSG_driver = 2;
-			transorref = "transmission mode";
+			transorref = "trans";
 		}
 		else {
 			PSG_driver = 3;
-			transorref = "reflection mode";
+			transorref = "refl";
 		}
 		int PSA_driver = 1;
 
 		std::string kspaceorreal;
 		if (kspace) {
-			kspaceorreal = "k-space image";
+			kspaceorreal = "k-space";
 		}
 		else {
-			kspaceorreal = "real image";
+			kspaceorreal = "real";
 		}
 
 		std::string path = make_new_directory(transorref,kspaceorreal);
@@ -109,31 +129,77 @@ int main()
 		mme::ESPDriver driver{ "COM1" };
 		driver_initialize(&driver,PSG_driver,PSA_driver);
 
-		for (int i = 0; i != PSG_pos.size(); ++i) {
 
-			driver.move_absolute(PSG_driver, PSG_pos[i]);
+		if (optimalangles) {
+			for (int i = 0; i != PSG_pos.size(); ++i) {
+				for (int j = 0; j != PSA_pos.size(); ++j) {
+					double PSA_pos_j;
+					if (i % 2 != 0) {
+						PSA_pos_j = PSA_pos[PSA_pos.size() - j - 1];
+					}
+					else {
+						PSA_pos_j = PSA_pos[j];
+					}
+					driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_pos[i], PSA_pos_j);
+					std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
 
-			for (int j = 0; j != PSA_pos.size(); ++j) {
-				float PSA_pos_j;
-				if (i % 2 != 0) {
-					PSA_pos_j = PSA_pos[PSA_pos.size()-1 - j];
+					// Include mono and filterwheel for each position
+					measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength, i * PSG_pos.size() + j + 1);
+
 				}
-				else {
-					PSA_pos_j = PSA_pos[j];
-				}
-				driver.move_absolute(PSA_driver, PSA_pos_j);
-				std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
-
-				// Include mono and filterwheel for each position
-				std::string wavelength = "white spectrum";
-				measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength);
 			}
+			driver.home(PSG_driver);
+			driver.home(PSA_driver);
+
+			std::cout << "\n\nSuccessfully acquired " << PSG_pos.size()*PSA_pos.size() << " images and saved to files in folder " << path << std::endl;
 		}
 
-		driver.home(PSG_driver);
-		driver.home(PSA_driver);
+		else {
+			for (int i = 0; i != Nmeas; ++i) {
 
-		std::cout << "\nSuccessfully acquired images and saved to file" << std::endl;
+				driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_rotstep * i, PSA_rotstep * i);
+
+				std::cout << "Moved to positions PSG: " << PSG_rotstep * i << " PSA: " << PSA_rotstep * i << std::endl;
+
+				// Include mono and filterwheel for each position
+				measure_and_save(&cam, path, std::to_string(PSG_rotstep * i).substr(0, std::to_string(PSG_rotstep * i).size() - 5), std::to_string(PSA_rotstep * i).substr(0, std::to_string(PSA_rotstep * i).size() - 5), wavelength, i + 1);
+
+			}
+
+			driver.home(PSG_driver);
+			driver.home(PSA_driver);
+
+			std::cout << "\n\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
+		}
+
+
+		// Run python plotting-script
+
+		FILE* file;
+		int argc = 5;
+		wchar_t** wargv = new wchar_t* [argc];
+
+		wargv[0] = Py_DecodeLocale("C:/Users/PolarimetriD4-112/dev/mme/apps/image_acquisition_app/image_acquisiton_app_dataanalysis.py", nullptr);
+		wargv[1] = Py_DecodeLocale("-m", nullptr);
+		wargv[2] = Py_DecodeLocale("/tmp/targets.lists", nullptr);
+		wargv[3] = Py_DecodeLocale(path.c_str(), nullptr);
+		wargv[4] = Py_DecodeLocale("C:/Users/PolarimetriD4 - 112/Anaconda3", nullptr);
+
+		Py_SetProgramName(wargv[0]);
+		Py_Initialize();
+		Py_SetPath(wargv[4]);
+		Py_SetPythonHome(wargv[4]);
+		PySys_SetArgv(argc, wargv);
+		file = fopen("C:/Users/PolarimetriD4-112/dev/mme/apps/image_acquisition_app/image_acquisiton_app_dataanalysis.py", "r");
+		PyRun_SimpleFile(file, "C:/Users/PolarimetriD4-112/dev/mme/apps/image_acquisition_app/image_acquisiton_app_dataanalysis.py");
+		Py_Finalize();
+
+		for (int i = 0; i < argc; i++) {
+			PyMem_RawFree(wargv[i]);
+			wargv[i] = nullptr;
+		}
+		delete[] wargv;
+		wargv = nullptr;
 
 		return 1;
 	}
