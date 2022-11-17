@@ -10,36 +10,35 @@
 
 namespace mme 
 {
+	namespace detail {
+		class NidaqTask {
+		public:
+			NidaqTask();
+			NidaqTask(std::string task_name);
 
-	void test();
+			//Move only type
+			NidaqTask(const NidaqTask& other) = delete;
+			NidaqTask& operator=(const NidaqTask& other) = delete;
+			NidaqTask(NidaqTask&& other) = default;
+			NidaqTask& operator=(NidaqTask&& other) = default;
+
+			const std::string& name() const;
+			void* handle();
+		private:
+			using cleanup_func_t = void(*)(void*);
+			static void cleanup(void* handle);
+		private:
+			std::string m_name;
+			std::unique_ptr<void, cleanup_func_t> m_handle;
+			inline static std::atomic<size_t> s_tasks_created = 0;
+		};
+	}
 
 	bool is_error(int nidaq_error_code);
 	bool is_warning(int nidaq_error_code);
 	bool is_ok(int nidaq_error_code);
 	void throw_nidaq_error(int nidaq_error_code);
 	void throw_if_error(int nidaq_error_code);
-
-	class NidaqTask {
-	public:
-		NidaqTask();
-		NidaqTask(std::string task_name);
-
-		//Move only type
-		NidaqTask(const NidaqTask& other) = delete;
-		NidaqTask& operator=(const NidaqTask& other) = delete;
-		NidaqTask(NidaqTask&& other) = default;
-		NidaqTask& operator=(NidaqTask&& other) = default;
-
-		const std::string& name() const;
-		void* handle();
-	private:
-		using cleanup_func_t = void(*)(void*);
-		static void cleanup(void* handle);
-	private:
-		std::string m_name;
-		std::unique_ptr<void, cleanup_func_t> m_handle;
-		inline static std::atomic<size_t> s_tasks_created = 0;
-	};
 
 	struct VoltageRange {
 		double min = 0.0;
@@ -85,7 +84,7 @@ namespace mme
 		SamplingRate default_sampling_rate();
 		std::vector<double> read_data(size_t num_samples, std::chrono::duration<double> timeout);
 	private:
-		NidaqTask m_task;
+		detail::NidaqTask m_task;
 		SamplingSettings m_settings;
 	};
 	
@@ -107,7 +106,7 @@ namespace mme
 	private:
 		std::vector<double> read_data(size_t num_samples, std::chrono::duration<double> timeout);
 	private:
-		NidaqTask m_task;
+		detail::NidaqTask m_task;
 		SamplingSettings m_sampling_settings;
 		TriggerSettings m_trigger_settings;
 		bool m_is_armed;
