@@ -47,9 +47,10 @@ def do_gaussian_2d_fit(file,dark_im,plot=True):
     if np.array_equal(dark_im,np.ndarray(shape=(512,512))) == False:
         im = im/dark_im
     
-    #Find position of maximum inside the center of the image
+    #Find position of maximum inside the expected area
     h,w=im.shape
-    circular_mask = create_circular_mask(h, w, center=(h/2,w/2),radius=0.2*h)
+    #circular_mask = create_circular_mask(h, w, center=(h/2,w/2),radius=0.2*h)
+    circular_mask = create_circular_mask(h, w, center=(250,320),radius=0.2*h)
     center = np.copy(im)
     center = scipy.ndimage.gaussian_filter(center, 3) #Smooth to remove small spots
     center[~circular_mask] = 0
@@ -86,16 +87,17 @@ def do_gaussian_2d_fit(file,dark_im,plot=True):
         y = np.arange(w)
         max_idx = np.flip(np.unravel_index(np.argsort(im.ravel())[-1], im.shape))
 
-        ax1.plot(x,im[:,max_idx[0]])
-        ax1.plot(x,im_fit[:,max_idx[0]])
-        ax1.plot(x,im.sum(0))
-        ax1.plot(x,im_fit.sum(0))
+        ax1.plot(x,im[:,max_idx[0]],label="Measured",linewidth=3)
+        ax1.plot(x,im.sum(0),label="Measured",linewidth=3)
+        ax1.plot(x,im_fit[:,max_idx[0]],label="Fit")
+        ax1.plot(x,im_fit.sum(0),label="Fit")
+        ax1.legend()
 
-        ax2.plot(y,im[max_idx[1],:])
-        ax2.plot(y,im.sum(1))
-        ax2.plot(y,im_fit[max_idx[1],:])
-        ax2.plot(y,im_fit.sum(1))
-        
+        ax2.plot(y,im[max_idx[1],:],label="Measured",linewidth=3)
+        ax2.plot(y,im.sum(1),label="Measured",linewidth=3)
+        ax2.plot(y,im_fit[max_idx[1],:],label="Fit")
+        ax2.plot(y,im_fit.sum(1),label="Fit")
+        ax2.legend()
         
         #Plot the Gaussian fit as a circle on the image, to indicate position and width of the peak
         ax3.imshow(im)
@@ -124,7 +126,8 @@ def do_gaussian_2d_fit(file,dark_im,plot=True):
     circular_mask = create_circular_mask(h, w, center=(x0,y0),radius=sigma)
     center_spot = np.copy(im_fit)
     center_spot[~circular_mask] = 0
-    total_intensity = np.sum(center_spot)
+    #total_intensity = np.sum(center_spot)
+    total_intensity = np.max(center_spot)
     
     return total_intensity, [x0,y0,sigma,A,offset], im_fit, im
 
@@ -150,9 +153,9 @@ def analyse(path,foldername,kspace=False):
             position = filename[:filename.find("Wl")]
             PSG_pos = float(position[position.find("PSG")+3:position.find("PSA")])
             PSA_pos = float(position[position.find("PSA")+3:])
-            total_intensity, [x0,y0,sigma,A,offset], im_fit, im = do_gaussian_2d_fit(file,dark_im,plot=True)
+            total_intensity, [x0,y0,sigma,A,offset], im_fit, im = do_gaussian_2d_fit(file,dark_im,plot=False)#,plot=True)
             intensities.append([PSG_pos,PSA_pos,round(total_intensity,2)])
-            peak_positions.append([PSG_pos,PSA_pos,x0,y0])
+            peak_positions.append([PSG_pos,PSA_pos,x0,y0]) 
         
         intensities = np.array(intensities)
         peak_positions = np.array(peak_positions)
@@ -200,7 +203,7 @@ def analyse_and_plot(path,foldername,kspace=False):
         if ("dark measurement") in file:
             files.remove(file)
             dark_im: np.ndarray = np.load(file)
-
+    saturation = False
     for i in range(len(files)):
         file = files[i]
         filename = file.replace(path+os.sep+foldername+os.sep,"").replace(".npy","")
@@ -208,16 +211,22 @@ def analyse_and_plot(path,foldername,kspace=False):
         PSG_pos = float(position[position.find("PSG")+3:position.find("PSA")])
         PSA_pos = float(position[position.find("PSA")+3:])
         
+        im: np.ndarray = np.load(file)
+        if np.array_equal(dark_im,np.ndarray(shape=(512,512))) == False:
+            im = im/dark_im
+        im = im[250:420,170:343]
+        if saturation == False:
+            if np.max(im) > 4090:
+                print("\nWARNING: The camera is saturated, and the exposure time must be reduced")
+                saturation = True
+            elif np.max(im) > 4000:
+                print("\nVery close to reaching saturation, with largest intensities", np.flip(np.sort(im,axis=None))[:5])
+                print("Should reduce the exposure time")
+                
         if kspace:
             total_intensity, [x0,y0,sigma,A,offset], im_fit, im = do_gaussian_2d_fit(file,dark_im,plot=False)
             intensities.append([PSG_pos,PSA_pos,round(total_intensity,2)])
             peak_positions.append([PSG_pos,PSA_pos,x0,y0])
-        
-        else:
-            im: np.ndarray = np.load(file)
-            if np.array_equal(dark_im,np.ndarray(shape=(512,512))) == False:
-                im = im/dark_im
-            im = im[250:420,170:343]
         
         if fig_rows == 1 or fig_columns == 1:
             ax = axs[i]

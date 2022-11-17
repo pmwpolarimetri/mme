@@ -21,7 +21,7 @@
 #include "asio.hpp"
 
 // Type in a foldername of the measurement:
-std::string folderdescription = "Air calibration angles 633nm";
+std::string folderdescription = "Calibration angles, 500nm";
 
 // K-space or real image?
 bool kspace = true;
@@ -29,14 +29,14 @@ bool kspace = true;
 // Transmission or reflection mode?
 bool transmission = true;
 
-std::string wavelength = "633";
+std::string wavelength = "500";
 
-double exposure = 30; //1000 for mono in dark room, 20 for white light, 30 for mono with background light
+double exposure = 5; //Max 5 to omit saturation of the detector
 
 //Type in the rotation increments (in degrees) of the retarders, and number of measurements
-double PSG_rotstep = 7.5;
-double PSA_rotstep = 37.5;
-int Nmeas = 30;
+double PSG_rotstep = 1;
+double PSA_rotstep = 5;
+int Nmeas = 361;
 
 ////Type in specific rotation angles of the retarders
 //std::vector<double> PSG_pos{-51.7076, -15.1964, 15.1964, 51.7076};
@@ -161,7 +161,7 @@ int main()
 		driver.home(PSG_driver);
 		driver.home(PSA_driver);
 
-		std::cout << "\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
+		std::cout << "\n\nSuccessfully acquired " << Nmeas << " images and saved to files in folder " << path << std::endl;
 
 
 		// Run python plotting-script
