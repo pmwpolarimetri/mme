@@ -10,6 +10,9 @@
 
 namespace mme 
 {
+
+	void test();
+
 	bool is_error(int nidaq_error_code);
 	bool is_warning(int nidaq_error_code);
 	bool is_ok(int nidaq_error_code);

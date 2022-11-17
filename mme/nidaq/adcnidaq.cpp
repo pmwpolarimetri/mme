@@ -7,6 +7,18 @@
 
 using namespace std::chrono_literals;
 
+void mme::test()
+{
+	TaskHandle handle;
+	int32 err_code = 1;
+	err_code = DAQmxCreateTask("my_task", &handle);
+	err_code = DAQmxCreateAIVoltageChan(handle, "Dev1/ai0", "my_channel", DAQmx_Val_Diff, -10.0, 10.0, DAQmx_Val_Volts, NULL);
+	err_code = DAQmxCfgSampClkTiming(handle, NULL, 100000, DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, 100);
+	err_code = DAQmxStartTask(handle);
+	//DAQmxReadAnalogF64(handle, -1, 5, DAQmx_Val_GroupByChannel, buffer.data(), buffer.size(), &num_samples_read, NULL));
+	err_code = DAQmxStopTask(handle);
+}
+
 bool mme::is_error(int nidaq_error_code)
 {
 	return nidaq_error_code < 0;
