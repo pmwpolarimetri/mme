@@ -82,9 +82,9 @@ void camera_initialize(mme::LumeneraCamera *cam) {
 
 void driver_initialize(mme::ESPDriver* driver, int PSG_driver, int PSA_driver) {
 	auto reply = driver->request("VE?\r\n");
-	std::cout << "Initialized rotation motors: " << reply << std::endl << std::endl;
 	driver->home(PSG_driver);
 	driver->home(PSA_driver);
+	std::cout << "Initialized rotation motors: " << reply << std::endl;
 }
 
 void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength, int image_number) {
@@ -129,9 +129,11 @@ int main()
 		driver_initialize(&driver,PSG_driver,PSA_driver);
 
 		mme::Fwxc filter_wheel{};
+		std::cout << "Initialized filter wheel " << std::endl << std::endl;
 
 		// Make dark measurement
 		auto ok = filter_wheel.change_filter_position(6);
+		std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
 		auto dark = cam.capture_single();
 		auto filename = std::filesystem::path(path + "/Dark measurement.npy");
 		mme::save_to_numpy(filename.string(), dark);

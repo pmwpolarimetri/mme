@@ -144,7 +144,7 @@ def analyse(path,foldername,kspace=False):
         
         dark_im = np.ndarray(shape=(512,512))
         for file in files:
-            if ("dark measurement") in file:
+            if ("Dark measurement") in file:
                 files.remove(file)
                 dark_im: np.ndarray = np.load(file)
 
