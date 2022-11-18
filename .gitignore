@@ -1,3 +1,5 @@
+/data
+
 ### C++ ###
 # Prerequisites
 *.d
@@ -849,18 +851,3 @@ compile_commands.json
 
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
-/data/Arkiv/Thu Nov 10 19.13.42 2022 Air Calibration angles 633nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.53.16 2022 PSA movement, 410nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.50.38 2022 PSA movement, 633nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.48.06 2022 PSG movement, 633nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.36.43 2022 Calibration angles, 500nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.27.08 2022 Optimal angles, 633nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.20.08 2022 Calibration angles, 633nm, k-space, trans/Plot.png
-/data/Arkiv/Thu Nov 10 20.05.45 2022 Air calibration angles 633nm, bright background, k-space, trans/Plot.png
-/data/Arkiv/Thu Nov 10 19.55.51 2022 Air optimal angles 633nm, k-space, trans/Plot.png
-/data/Arkiv/Thu Nov 10 19.53.19 2022 Air optimal angles 750nm, k-space, trans/Plot.png
-/data/Arkiv/Thu Nov 10 19.40.32 2022 Air Calibration angles 750nm, k-space, trans/Plot.png
-/data/Arkiv/Thu Nov 10 19.26.56 2022 Air Calibration angles 410nm, k-space, trans/Plot.png
-/data/Fri Nov 11 15.05.42 2022 Constant intensity, 633nm, k-space, trans/Plot.png
-/data/Fri Nov 11 15.02.15 2022 Constant intensity, 410nm, k-space, trans/Plot.png
-/data/Fri Nov 11 14.55.43 2022 PSG movement, 410nm, k-space, trans/Plot.png
