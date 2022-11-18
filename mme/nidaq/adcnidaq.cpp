@@ -3,6 +3,7 @@
 #include <utility>
 #include "mme/nidaq/nidaqerrors.h"
 #include <cassert>
+#include <memory>
 
 
 using namespace std::chrono_literals;
@@ -34,34 +35,35 @@ void mme::throw_if_error(int nidaq_error_code)
 	}
 }
 
-mme::NidaqTask::NidaqTask()
+mme::detail::NidaqTask::NidaqTask()
 	:NidaqTask(std::to_string(++s_tasks_created))
 {
 }
 
-mme::NidaqTask::NidaqTask(std::string task_name)
+mme::detail::NidaqTask::NidaqTask(std::string task_name)
 	:m_name(std::move(task_name))
-	,m_handle(nullptr, NidaqTask::cleanup)
+	,m_handle(nullptr, cleanup)
 {
-	//throw_if_error(DAQmxCreateTask(m_name.c_str(), &m_handle));
-	auto handle_ptr = m_handle.get();
-	throw_if_error(DAQmxCreateTask(m_name.c_str(), &handle_ptr));
+	void* handle = nullptr;
+	throw_if_error(DAQmxCreateTask(m_name.c_str(), &handle));
+	m_handle = std::unique_ptr<void, cleanup_func_t>(handle, NidaqTask::cleanup);
 }
 
-const std::string& mme::NidaqTask::name() const
+const std::string& mme::detail::NidaqTask::name() const
 {
 	return m_name;
 }
 
-void* mme::NidaqTask::handle()
+void* mme::detail::NidaqTask::handle()
 {
 	return m_handle.get();
 }
 
-void mme::NidaqTask::cleanup(void* handle)
+void mme::detail::NidaqTask::cleanup(void* handle)
 {
+	
 	if (handle) {
-		DAQmxClearTask(handle);
+		auto err_code = DAQmxClearTask(handle);
 	}
 }
 
@@ -79,7 +81,11 @@ std::vector<double> mme::NidaqAdc::sample(size_t num_samples)
 	throw_if_error(DAQmxCfgSampClkTiming(m_task.handle(), NULL, m_settings.rate->value, DAQmx_Val_Rising, DAQmx_Val_FiniteSamps, num_samples));
 	throw_if_error(DAQmxStartTask(m_task.handle()));
 
-	const double timeout_s = 10 * num_samples / m_settings.rate->value; ; //TODO: add as function param or sane default (calculated)
+	const double min_timeout_s = 1.0; //min 1 sec timeout
+	double timeout_s = 10 * (num_samples / m_settings.rate->value); //TODO: add as function param or sane default (calculated)
+	if (timeout_s < min_timeout_s) {
+		timeout_s = min_timeout_s;
+	}
 	return read_data(num_samples, std::chrono::duration<double, std::ratio<1>>(timeout_s));
 }
 

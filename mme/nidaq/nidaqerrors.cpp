@@ -7,6 +7,7 @@
 mme::NidaqError::NidaqError(int error_code)
 	:std::runtime_error("")
 	,m_error_code(error_code)
+	,m_message(get_error_info(error_code))
 {
 }
 
@@ -29,9 +30,9 @@ std::string mme::NidaqError::get_error_info(int error_code)
 	if (size < 0) {
 		return default_message;
 	}
-	std::vector<char> buffer{};
-	const int buffer_size = 2 * size;
-	buffer.reserve(static_cast<size_t>(buffer_size));
+	const size_t buffer_size = static_cast<size_t>(2*size);
+	std::vector<char> buffer(buffer_size, '\0' );
+
 	auto code = DAQmxGetErrorString(m_error_code, buffer.data(), buffer_size);
 	if (code < 0) {
 		return default_message;
