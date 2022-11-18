@@ -47,11 +47,6 @@ double PSA_rotstep = 5;
 int Nmeas = 361;
 
 
-//Later, using the filterwheel, add dark measurements:
-//Do a dark measurement, and give the file a name including "dark measurement"
-//The dark correction will then automatically be performed in the python analysis script.
-//Meanwhile: Do a dark measurement by blocking the beam, and copy the file into the folder containing the other data
-
 std::string make_new_directory(std::string transorref, std::string kspaceorreal) {
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char* timenow = std::ctime(&now);
