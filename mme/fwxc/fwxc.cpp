@@ -89,7 +89,7 @@ std::optional<int> mme::Fwxc::connect_to_filter_wheel(std::string_view serial_nu
 {
 	//TODO: add c string termination
 	std::vector<char> sn{ serial_num.begin(), serial_num.end() };
-	char serial[] = "FWV5KU2V";
+	char serial[] = "TP02910303-26340";
 	//int handle = Open(sn.data(), 115200, 5000);
 	int handle = Open(serial, 115200, 2);
 	if (handle < 0) {

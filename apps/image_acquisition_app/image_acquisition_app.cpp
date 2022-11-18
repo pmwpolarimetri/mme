@@ -100,7 +100,6 @@ int main()
 {
 
 	try {
-
 		int PSG_driver;
 		std::string transorref;
 		if (transmission) {
@@ -129,6 +128,35 @@ int main()
 		mme::ESPDriver driver{ "COM1" };
 		driver_initialize(&driver,PSG_driver,PSA_driver);
 
+		mme::Fwxc filter_wheel{};
+
+		// Make dark measurement
+		auto ok = filter_wheel.change_filter_position(6);
+		auto dark = cam.capture_single();
+		auto filename = std::filesystem::path(path + "/Dark measurement.npy");
+		mme::save_to_numpy(filename.string(), dark);
+		std::cout << "Made dark measurement" << std::endl;
+
+
+
+		// TODO: Include mono, and run through the spectrum
+
+		if (std::stoi(wavelength) < 800) {
+			auto ok = filter_wheel.change_filter_position(2);
+			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
+		}
+		else if (std::stoi(wavelength) < 1400) {
+			auto ok = filter_wheel.change_filter_position(3);
+			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
+		}
+		else if (std::stoi(wavelength) < 2000) {
+			auto ok = filter_wheel.change_filter_position(4);
+			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
+		}
+		else if (std::stoi(wavelength) < 2900) {
+			auto ok = filter_wheel.change_filter_position(4);
+			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
+		}
 
 		if (optimalangles) {
 			for (int i = 0; i != PSG_pos.size(); ++i) {
@@ -143,7 +171,6 @@ int main()
 					driver.move_twoaxes_absolute(PSG_driver, PSA_driver, PSG_pos[i], PSA_pos_j);
 					std::cout << "Moved to positions PSG: " << PSG_pos[i] << " PSA: " << PSA_pos_j << std::endl;
 
-					// Include mono and filterwheel for each position
 					measure_and_save(&cam, path, std::to_string(PSG_pos[i]).substr(0, std::to_string(PSG_pos[i]).size() - 5), std::to_string(PSA_pos_j).substr(0, std::to_string(PSA_pos_j).size() - 5), wavelength, i * PSG_pos.size() + j + 1);
 
 				}
@@ -161,7 +188,6 @@ int main()
 
 				std::cout << "Moved to positions PSG: " << PSG_rotstep * i << " PSA: " << PSA_rotstep * i << std::endl;
 
-				// Include mono and filterwheel for each position
 				measure_and_save(&cam, path, std::to_string(PSG_rotstep * i).substr(0, std::to_string(PSG_rotstep * i).size() - 5), std::to_string(PSA_rotstep * i).substr(0, std::to_string(PSA_rotstep * i).size() - 5), wavelength, i + 1);
 
 			}
