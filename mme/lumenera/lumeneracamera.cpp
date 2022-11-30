@@ -34,7 +34,7 @@ LUCAM_SNAPSHOT default_camera_settings() {
     camera_settings.ulReserved1 = 0;
     camera_settings.ulReserved2 = 0;
     camera_settings.useHwTrigger = FALSE;
-    camera_settings.useStrobe = TRUE;
+    camera_settings.useStrobe = TRUE; // output trigger right before exposure
 
     return camera_settings;
 }
