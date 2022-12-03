@@ -1,3 +1,42 @@
+// Program for aquiring data from the Mueller matrix microscope in D4-112
+// 
+// Written by Vilde Vraalstad, last modified December 2022
+// 
+// Status December 2022:
+// - The monochromator still remains to be added.
+//	 This work involves development of code for running through and saving measurements at different wavelengths and prism positions.
+// - Only the Si-CCD Lumenera camera is included, not the InGaAs camera.
+//
+//
+// The program manages all components of the MM-microscope, and performs a measurement routine for acquiring data with the specified parameters.
+// How to use:
+// - Specify measurement parameters in the first part of the script
+// - Run program, by selecting x64-Release and image_acquisition_app.cpp as Startup Item, and pressing the green Play-button
+//
+// The included components:
+// - Lumenera camera
+// - Reference detector for acquring data on trigger
+// - ESP driver for rotating PSG and PSA prisms
+// - Filter wheel for dark correction and long pass filter (to remove the higher diffraction orders from the monochromator)
+// Measurement routine:
+// - Initialize camera, ESP drivers and filter wheel
+//		- Camera binning is set to 4x4 pixels
+// - Make new directory for saving files
+// - Acquire dark measurement with camera and save to file
+// - Apply the correct filter wheel for the given wavelength
+// - For each prism position:
+//		- Move the prisms to the correct position
+//		- Acquire image with camera and reference detector, and save to files
+// - Run data analysis script in Python with the acquired data of the measurement series, which saves the result to file
+//		- The script will print a warning if the measurement is close to, or has reached, detector saturation
+// 
+// About data measurements, analysis and saving to file:
+// - The data are saved in a new folder under C:/Users/PolarimetriD4-112/dev/mme/data/, with foldername specifying time of data acquisition, type of data and an user-specified description of the measurement.
+//		The acquired images are saved as .npy-files, and the reference detector measurements as .txt-files.
+// - A data analysis script in Python is automatically run on the acquired data after a series of measurements, and for k-space images, saving the acquired and corrected center spot intensities to .npy-files Intensities, and saving the calculated Mueller Matrix to .txt-files Measured MM for 633nm calibration.
+// Thus, all full images are saved. However, only the result of the analysis for k-space images, Intensities.npy, are needed for further use and for computing Mueller matrices. The full images can be useful to keep to be able to change the data analysis routine, correct errors etc, but only Intensities.npy needs to be exported.
+
+
 #include <iostream>
 #include <format>
 #include <span>
@@ -21,43 +60,50 @@
 #include "lucamapi.h"
 #include "npy.hpp"
 #include "asio.hpp"
-
 using namespace std::chrono_literals;
 
-// Type in a foldername of the measurement:
-std::string folderdescription = "Optimal angles, 633nm";
+
+//////////////////// Specify the measurement parameters ////////////////////
+
+// Select a description of the measurement to be included in the foldername:
+std::string folderdescription = "Optimal angles";
+
+// Select a wavelength of the measurement:
+std::string wavelength = "633";
 
 // K-space or real image?
+// If kspace = true, the acquired data will be analysed for intensity-fit in the python data analysis script
 bool kspace = true;
 
 // Transmission or reflection mode?
 bool transmission = true;
 
-std::string wavelength = "633";
-
-double exposure = 5; //Max 5 to omit saturation of the detector
-
+// Select exposure time.
+// Max 5 at 633nm to omit saturation of the detector. May need larger for longer wavelengths, and lower for shorter wavelengths. A warning is printed during data analysis if the measurement is close to, or has reached, saturation.
+double exposure = 5;
 
 //Chosse between measuring at the optimal angles (true), or at specific rotation increments (false)
 bool optimalangles = true;
+
+//Choose the rotation increments (in degrees) of the retarders, and number of measurements
+double PSG_rotstep = 1;
+double PSA_rotstep = 5;
+int Nmeas = 361;
 
 //The optimal angles of the retarders
 std::vector<double> PSG_pos{-51.7076, -15.1964, 15.1964, 51.7076};
 std::vector<double> PSA_pos{-51.7076, -15.1964, 15.1964, 51.7076};
 
-//The rotation increments (in degrees) of the retarders, and number of measurements
-double PSG_rotstep = 1;
-double PSA_rotstep = 5;
-int Nmeas = 5;
+//////////////////////////////// Code ////////////////////////////////
 
-
+// Make a new directory under mme/data, with foldername specifying time of data acquisition, type of data and the user-specified description of the measurement.
 std::string make_new_directory(std::string transorref, std::string kspaceorreal) {
 	std::time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char* timenow = std::ctime(&now);
 	std::string foldername(timenow);
 	foldername.erase(std::remove(foldername.begin(), foldername.end(), '\n'), foldername.cend());
 	std::replace(foldername.begin(), foldername.end(), ':', '.');
-	foldername = foldername + " " + folderdescription + ", " + kspaceorreal + ", " + transorref;
+	foldername = foldername + " " + folderdescription + " " + wavelength + "nm, " + kspaceorreal + ", " + transorref;
 
 	std::string path = "C:/Users/PolarimetriD4-112/dev/mme/data/" + foldername; 
 
@@ -70,6 +116,7 @@ std::string make_new_directory(std::string transorref, std::string kspaceorreal)
 	return path;
 }
 
+// Initialize camera
 void camera_initialize(mme::LumeneraCamera *cam) {
 	cam->set_exposure(mme::Exposure{ exposure });
 	cam->set_image_size(mme::ImageSize{ .height = 2048, .width = 2048 });
@@ -78,6 +125,7 @@ void camera_initialize(mme::LumeneraCamera *cam) {
 	return;
 };
 
+// Initialize ESP drivers
 void driver_initialize(mme::ESPDriver* driver, int PSG_driver, int PSA_driver) {
 	auto reply = driver->request("VE?\r\n");
 	driver->home(PSG_driver);
@@ -85,12 +133,15 @@ void driver_initialize(mme::ESPDriver* driver, int PSG_driver, int PSA_driver) {
 	std::cout << "Initialized rotation motors: " << reply << std::endl;
 }
 
-
+// Function for making a camera and reference detector measurement, and saving to file.
 void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PSG_pos, std::string PSA_pos, std::string wavelength, int image_number, bool dark) {
 	mme::NidaqTriggeredAdc adc_triggered{ "Dev1/ai0" };
 
-	adc_triggered.sample_on_trigger(std::chrono::duration<double>(0.001 * exposure) , mme::SamplingRate{ 25'000 }); //Trigger is armed. Will sample 0.001*exposure*sampling_rate=125 samples during one camera shot
+	// When the camera captures an image, the reference detector is triggered, and will sample with a sampling rate of 25 000 during the exposure time (i.e. the camera shot)
+	// Number_of_samples = exposure_time*sampling_rate, and their average value can then be used for intensity normalization in the data analysis
+	adc_triggered.sample_on_trigger(std::chrono::duration<double>(0.001 * exposure) , mme::SamplingRate{ 25'000 }); //Trigger is armed.
 
+	// Acquire an image and save to file
 	auto image = cam->capture_single();
 	std::filesystem::path filename;
 	if (!dark) {
@@ -101,11 +152,11 @@ void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PS
 		std::cout << "Captured dark image. Height: " << image.size().height << ", Width: " << image.size().width << std::endl;
 		filename = std::filesystem::path(path + "/Dark measurement.npy");
 	}
-
 	mme::save_to_numpy(filename.string(), image);
 
+	// If not dark measurement, retrieve the sampled data from the reference detector buffer and save to file.
 	if (!dark) {
-		auto possible_samples = adc_triggered.retrieve_samples(2s); //retrieve data. Only data on success. Timeout 2 seconds = The amount of time, in seconds, to wait for the function to read the sample(s).
+		auto possible_samples = adc_triggered.retrieve_samples(2s); // Only data on success. Timeout 2s = the amount of time to wait for the function to read the samples. In most cases, it is finished much faster.
 		if (possible_samples) {
 			std::ofstream fw(path + "/PSG" + PSG_pos + "PSA" + PSA_pos + "Wl" + wavelength + ".txt", std::ofstream::out);
 			if (fw.is_open()) {
@@ -128,8 +179,10 @@ void measure_and_save(mme::LumeneraCamera* cam, std::string path, std::string PS
 
 int main()
 {
-
 	try {
+
+		// Initialize ESP drivers, camera and filter wheel
+
 		int PSG_driver;
 		std::string transorref;
 		if (transmission) {
@@ -161,15 +214,16 @@ int main()
 		mme::Fwxc filter_wheel{};
 		std::cout << "Initialized filter wheel " << std::endl << std::endl;
 
+
 		// Make dark measurement
 		auto ok = filter_wheel.change_filter_position(6);
 		std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
 		measure_and_save(&cam, path, std::to_string(0), std::to_string(0), "dark", 0, true);
 
 
-
 		// TODO: Include mono, and run through the spectrum
 
+		// Choose the correct filter wheel depending on the wavelength
 		if (std::stoi(wavelength) < 800) {
 			auto ok = filter_wheel.change_filter_position(2);
 			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
@@ -187,6 +241,8 @@ int main()
 			std::cout << "Filter wheel position: " << filter_wheel.current_filter_position() << std::endl;
 		}
 
+		// If set to measure at the optimal angles, then loop through and measure at the 16 positions.
+		// Loops in an efficient way, going low-high-low-high-..., instead of low-high low-high ...
 		if (optimalangles) {
 			for (int i = 0; i != PSG_pos.size(); ++i) {
 				for (int j = 0; j != PSA_pos.size(); ++j) {
@@ -210,6 +266,7 @@ int main()
 			std::cout << "\n\nSuccessfully acquired " << PSG_pos.size()*PSA_pos.size() << " images and saved to files in folder " << path << std::endl;
 		}
 
+		// If set to scquire Nmeas images at specific rotation increments:
 		else {
 			for (int i = 0; i != Nmeas; ++i) {
 
@@ -228,8 +285,10 @@ int main()
 		}
 
 
-		// Run python plotting-script
-
+		// Run python data analysis-script image_acquisition_app_dataanalysis.py, which runs the analysis in mme_microscope_dataanalysis.py on the acquired data
+		// - Performs dark-correction, and prints a warning if saturation of the detector is close or reached.
+		// - All acquired images are plotted.
+		// - If the filename contains "k-space", a gaussian fit of the center spot is performed, the resulting peak intensities are saved to file, and the sample Mueller matrix calculated from intensity fit calibration at 633nm is saved to file.
 		FILE* file;
 		int argc = 5;
 		wchar_t** wargv = new wchar_t* [argc];
