@@ -33,7 +33,7 @@
 // About data measurements, analysis and saving to file:
 // - The data are saved in a new folder under C:/Users/PolarimetriD4-112/dev/mme/data/, with foldername specifying time of data acquisition, type of data and an user-specified description of the measurement.
 //		The acquired images are saved as .npy-files, and the reference detector measurements as .txt-files.
-// - A data analysis script in Python is automatically run on the acquired data after a series of measurements, and for k-space images, saving the acquired and corrected center spot intensities to .npy-files Intensities, and saving the calculated Mueller Matrix to .txt-files Measured MM for 633nm calibration.
+// - A data analysis script in Python is automatically run on the acquired data after a series of measurements, and for k-space images, when centerspot_analysis is set to true, saving the acquired and corrected center spot intensities to .npy-files Intensities, and saving the calculated Mueller Matrix to .txt-files Measured MM for 633nm calibration.
 // Thus, all full images are saved. However, only the result of the analysis for k-space images, Intensities.npy, are needed for further use and for computing Mueller matrices. The full images can be useful to keep to be able to change the data analysis routine, correct errors etc, but only Intensities.npy needs to be exported.
 
 
@@ -72,8 +72,10 @@ std::string folderdescription = "Optimal angles";
 std::string wavelength = "633";
 
 // K-space or real image?
-// If kspace = true, the acquired data will be analysed for intensity-fit in the python data analysis script
 bool kspace = true;
+
+// If centerspot_analysis = true, the center spot intensity will be analysed for intensity-fit in the python data analysis script
+bool centerspot_analysis = true;
 
 // Transmission or reflection mode?
 bool transmission = true;
@@ -290,7 +292,7 @@ int main()
 		// - All acquired images are plotted.
 		// - If the filename contains "k-space", a gaussian fit of the center spot is performed, the resulting peak intensities are saved to file, and the sample Mueller matrix calculated from intensity fit calibration at 633nm is saved to file.
 		FILE* file;
-		int argc = 5;
+		int argc = 6;
 		wchar_t** wargv = new wchar_t* [argc];
 
 		wargv[0] = Py_DecodeLocale("C:/Users/PolarimetriD4-112/dev/mme/apps/image_acquisition_app/image_acquisiton_app_dataanalysis.py", nullptr);
@@ -298,6 +300,7 @@ int main()
 		wargv[2] = Py_DecodeLocale("/tmp/targets.lists", nullptr);
 		wargv[3] = Py_DecodeLocale(path.c_str(), nullptr);
 		wargv[4] = Py_DecodeLocale("C:/Users/PolarimetriD4 - 112/Anaconda3", nullptr);
+		wargv[5] = Py_DecodeLocale(centerspot_analysis, nullptr);
 
 		Py_SetProgramName(wargv[0]);
 		Py_Initialize();

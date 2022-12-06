@@ -2,9 +2,9 @@
 Program for data analysis of the acquired data from the Mueller matrix microscope in D4-112
 Written by Vilde Vraalstad, last modified December 2022
 
-The function analyse(path, foldername, bool kspace_intensity_fit, bool plot_data, bool plot_gaussian_fit) reads all data in the folder,
+The function analyse(path, foldername, bool centerspot_intensity_fit, bool plot_data, bool plot_gaussian_fit) reads all data in the folder,
 performs dark-correction, and prints a warning if saturation of the detector is close or reached.
-- If kspace_intensity_fit is True, a gaussian fit of the center spot is performed, the resulting peak intensities are saved to file,
+- If centerspot_intensity_fit is True, a gaussian fit of the center spot is performed, the resulting peak intensities are saved to file,
   and the sample Mueller matrix calculated from intensity fit calibration at 633nm is saved to file.
 - If plot_data is True, the images are plotted and saved as a figure in the datafolder
 - If plot_gaussian_fit is True, the gaussian fits of the center spots are plotted. It can be useful to double check this if the resulting intensities seem wrong.
@@ -176,7 +176,7 @@ def do_gaussian_2d_fit(file,reference_file,dark_im,PSA_pos=0,plot=True):
     return total_intensity, [x0,y0,sigma,A,offset], im_fit, im
 
     
-def analyse(path,foldername,kspace_intensity_fit=False,plot_data=False,plot_gaussian_fit=False):
+def analyse(path,foldername,centerspot_intensity_fit=False,plot_data=False,plot_gaussian_fit=False):
     
     # Read all .npy-images in the folder (except the saved intensities and peak positions), and all reference .txt-files
     files = glob(path+os.sep+foldername+os.sep+"*.npy")
@@ -237,7 +237,7 @@ def analyse(path,foldername,kspace_intensity_fit=False,plot_data=False,plot_gaus
                 print("Should reduce the exposure time")
                 
         # Perform gaussian intensity fit
-        if kspace_intensity_fit:
+        if centerspot_intensity_fit:
             total_intensity, [x0,y0,sigma,A,offset], im_fit, im = do_gaussian_2d_fit(file,reference_file,dark_im,PSA_pos=PSA_pos,plot=plot_gaussian_fit)
             intensities.append([PSG_pos,PSA_pos,round(total_intensity,2)])
             peak_positions.append([PSG_pos,PSA_pos,x0,y0])
@@ -251,7 +251,7 @@ def analyse(path,foldername,kspace_intensity_fit=False,plot_data=False,plot_gaus
             ax.imshow(im)
             
             # Plot the position and width of the gaussian fit, to check that it looks correct
-            if kspace_intensity_fit:
+            if centerspot_intensity_fit:
                 circle = plt.Circle((x0,y0),sigma, facecolor='none', edgecolor="red", linewidth=1, alpha=0.8)
                 ax.add_patch(circle)
             
@@ -266,7 +266,7 @@ def analyse(path,foldername,kspace_intensity_fit=False,plot_data=False,plot_gaus
         plt.savefig(path+os.sep+foldername+os.sep+"Plot.png") 
         plt.show()  
     
-    if kspace_intensity_fit:
+    if centerspot_intensity_fit:
         
         intensities = np.array(intensities)
         peak_positions = np.array(peak_positions)
